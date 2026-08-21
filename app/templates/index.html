@@ -3,20 +3,175 @@
 <head>
   <title>Resume Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
-    body { font-family: Arial; padding: 20px; }
-    textarea { width: 100%; height: 200px; }
-    button { padding: 12px; width: 100%; margin-top: 10px; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 5px;
+      color: #2a5298;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 15px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 180px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      resize: none;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: #2a5298;
+      box-shadow: 0 0 5px rgba(42,82,152,0.4);
+    }
+
+    button {
+      padding: 12px;
+      width: 100%;
+      margin-top: 15px;
+      border: none;
+      border-radius: 8px;
+      background: #2a5298;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button:hover {
+      background: #1e3c72;
+    }
+
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+
+    /* 🔄 Spinner */
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid white;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .footer {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #888;
+    }
   </style>
 </head>
+
 <body>
 
-<h2>Generate Resume</h2>
+<div class="container">
+  <h2>Welcome Prasanth 👋</h2>
+  <div class="subtitle">Generate your tailored resume instantly</div>
 
-<form action="/generate" method="post">
-  <textarea name="jd" placeholder="Paste Job Description here..." required></textarea>
-  <button type="submit">Generate Resume</button>
-</form>
+  <form id="resumeForm">
+    <textarea name="jd" id="jd" placeholder="Paste Job Description here..." required></textarea>
+
+    <button type="submit" id="generateBtn">
+      <div class="spinner" id="spinner"></div>
+      <span id="btnText">🚀 Generate Resume</span>
+    </button>
+  </form>
+
+  <div class="footer">Fast • Simple • Personalized</div>
+</div>
+
+<script>
+  const form = document.getElementById("resumeForm");
+  const button = document.getElementById("generateBtn");
+  const spinner = document.getElementById("spinner");
+  const text = document.getElementById("btnText");
+  const textarea = document.getElementById("jd");
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault(); // ❗ stop default form submit
+
+    spinner.style.display = "inline-block";
+    text.innerText = "Generating...";
+    button.disabled = true;
+
+    try {
+      const response = await fetch("/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          jd: textarea.value
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate resume");
+      }
+
+      // convert response to blob (PDF)
+      const blob = await response.blob();
+
+      // create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "tailored_resume.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+    } catch (err) {
+      alert("Error generating resume");
+      console.error(err);
+    }
+
+    // ✅ reset UI after completion
+    spinner.style.display = "none";
+    text.innerText = "🚀 Generate Resume";
+    button.disabled = false;
+  });
+</script>
 
 </body>
 </html>

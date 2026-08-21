@@ -21,32 +21,70 @@ def generate_resume_text(prompt):
     ]
     last_error = None
 
-    for model in models:
-        for attempt in range(3):  # retry per model
-            try:
-                response = client.models.generate_content(
-                    model=model,
-                    contents=prompt,
-                )
-                return response.text
+    # Collect keys from environment (add more variables if you want)
+    gemini_keys = [
+        os.getenv("GEMINI_API_KEY_1"),
+        os.getenv("GEMINI_API_KEY_2"),
+        os.getenv("GEMINI_API_KEY_3"),
+    ]
+    # fallback to single GEMINI_API_KEY if none of the multi keys provided
+    gemini_keys = [k for k in gemini_keys if k]
+    if not gemini_keys:
+        primary = os.getenv("GEMINI_API_KEY")
+        if primary:
+            gemini_keys = [primary]
 
-            except Exception as e:
-                last_error = e
-                msg = str(e).lower()
+    if not gemini_keys:
+        raise Exception("No Gemini API keys found in environment (GEMINI_API_KEY_1/2/3 or GEMINI_API_KEY).")
 
-                print(f"[ERROR] Model: {model}, Attempt: {attempt+1}, Error: {e}")
+    # Try each key in order
+    for key_index, api_key in enumerate(gemini_keys):
+        print(f"[INFO] Using Gemini API key #{key_index+1}")
+        client_for_key = genai.Client(api_key=api_key)
 
-                # retry only for transient errors
-                if "429" in msg or "quota" in msg or "rate" in msg:
-                    time.sleep(2 * (attempt + 1))  # exponential backoff
-                    continue
-                elif "503" in msg or "unavailable" in msg:
-                    time.sleep(2)
-                    continue
-                else:
-                    break  # don't retry for unknown errors
+        # Try each model for this key
+        for model in models:
+            quota_hit = False
+            for attempt in range(3):  # up to 3 attempts per model
+                try:
+                    response = client_for_key.models.generate_content(
+                        model=model,
+                        contents=prompt,
+                    )
+                    return response.text
 
-    raise Exception(f"All models failed. Last error: {last_error}")
+                except Exception as e:
+                    last_error = e
+                    msg = str(e).lower()
+                    print(f"[ERROR] Key#{key_index+1} Model:{model} Attempt:{attempt+1} Error: {e}")
+
+                    # If quota/rate -> switch to next API key immediately
+                    if ("429" in msg) or ("quota" in msg) or ("rate" in msg):
+                        print(f"[WARN] Quota/rate limit detected on key #{key_index+1} (model {model}). Switching key...")
+                        quota_hit = True
+                        break
+
+                    # Transient server errors -> retry with backoff
+                    if ("503" in msg) or ("unavailable" in msg):
+                        sleep_seconds = 2 * (attempt + 1)
+                        print(f"[INFO] Transient error, retrying after {sleep_seconds}s...")
+                        time.sleep(sleep_seconds)
+                        continue
+
+                    # Unknown/non-retryable error for this model -> stop retrying model
+                    break
+
+            # if quota was hit for this model, break to try next key
+            if quota_hit:
+                break
+
+        # Try next API key
+        print(f"[INFO] Key #{key_index+1} exhausted or skipped. Trying next key if available...")
+        # small backoff between switching keys (optional)
+        time.sleep(1)
+
+    # nothing worked
+    raise Exception(f"All Gemini keys/models failed. Last error: {last_error}")
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
