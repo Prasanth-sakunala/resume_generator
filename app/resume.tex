@@ -1,0 +1,113 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[left=1.0cm,right=1.0cm,top=0.8cm,bottom=0.8cm]{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage[none]{hyphenat}
+\usepackage{lmodern}
+
+
+\setlength{\parindent}{0pt}
+\pagenumbering{gobble}
+\renewcommand{\baselinestretch}{1.05}
+
+\titleformat{\section}
+  {\large\bfseries}
+  {}
+  {0em}
+  {}
+  [\titlerule]
+
+\titlespacing{\section}{0pt}{7pt}{5pt}
+
+\hypersetup{
+    colorlinks=true,
+    urlcolor=blue!70!black
+}
+
+\setlist[itemize]{leftmargin=*, noitemsep, topsep=1pt}
+
+\begin{document}
+
+\begin{center}
+    {\LARGE \textbf{PRASANTH SAKUNALA}} \\[3pt]
+    Hyderabad, India \;\textbar\;
+    \href{mailto:sakunalaprasanth@gmail.com}{sakunalaprasanth@gmail.com} \;\textbar\;
+    +91 6302332053 \;\textbar\;
+    \href{https://linkedin.com/in/prasanth-sakunala-45b98a215}{LinkedIn} \;\textbar\;
+    \href{https://github.com/Prasanth-sakunala}{GitHub}
+    \;\textbar\;
+    \href{https://leetcode.com/u/Prasanth_sakunala/}{LeetCode}
+\end{center}
+
+\vspace{2pt}
+
+% ──────────────────────────────────────────────
+\section*{Summary}
+Backend Software Engineer with \textbf{ nearly 3 years of experience} designing and developing scalable backend applications using \textbf{Java, Spring Boot, PostgreSQL, and Microservices}. Experienced in building secure REST APIs, cloud-native services on AWS, containerized deployments, and automated CI/CD pipelines. Strong foundation in backend engineering, distributed systems, and designing reliable, production-ready software.
+
+% ──────────────────────────────────────────────
+\section*{Experience}
+
+\textbf{Software Engineer} \hfill Dec 2023 -- Present
+
+
+
+\textit{Tech Mahindra}
+\hfill\\\smallskip
+\textit{Client: Singapore Land Authority --- Digital Conveyancing Portal (25+ Microservices)}
+\begin{itemize}
+\item Designed and delivered the Option-to-Purchase (OTP) Template by implementing \textbf{15+ REST APIs}, business logic, and PostgreSQL data models for configurable property transaction workflows across Digital and WetInk document flows.
+\item Developed Spring Boot backend services for commercial property transactions by implementing \textbf{Redis-based distributed locking}, secure AWS S3 document management, and GST calculation rules, ensuring data consistency across concurrent multi-user workflows.
+\item Designed \textbf{normalized PostgreSQL schemas} and optimized JPA repository queries, \textbf{reducing API response latency by 30\%} and enabling efficient pagination, filtering, and retrieval of agreement, transaction, and reference data.
+\item Automated build, testing, Docker image creation, \textbf{SonarQube} analysis, and deployments through \textbf{GitLab CI/CD} pipelines across Development, UAT, and Production environments on AWS.
+\item Improved application reliability by developing \textbf{JUnit 5} and \textbf{Mockito} unit tests, \textbf{achieving 85\%+ code coverage}, resolving SonarQube issues, and contributing to authentication, agreement, transaction, and commercial service modules.
+\item Developed \textbf{React (TypeScript)} interfaces with Redux for the OTP Template module, integrating multi-step workflows with backend APIs for property transactions.
+\end{itemize}
+% ──────────────────────────────────────────────
+\section*{Projects}
+
+\textbf{Order \& Inventory Management System} \;\textbar\;
+\textit{Java 21, Spring Boot 3, Spring Security, MySQL, Redis, Docker, AWS (EC2, RDS, Auto Scaling), GitHub Actions} \;\textbar\;
+\href{https://github.com/Prasanth-sakunala/Order-Inventory-Management-System}{\textbf{GitHub}}
+
+\begin{itemize}
+
+\item Designed and developed a Spring Boot backend platform with secure \textbf{JWT authentication}, role-based authorization, and RESTful APIs for order, inventory, and user management using a layered architecture.
+
+\item Implemented \textbf{transactional order processing} with inventory validation and \textbf{Redis caching}, maintaining consistent inventory data while improving response efficiency.
+
+\item Containerized the application using \textbf{Docker} and \textbf{Docker Compose}, orchestrating Spring Boot, MySQL, and Redis services for consistent development and deployment environments.
+
+\item Deployed the application on \textbf{AWS EC2 Auto Scaling Groups} backed by \textbf{Amazon RDS}, leveraging Launch Templates for automated infrastructure provisioning and scalable deployments.
+
+\item Automated CI/CD using \textbf{GitHub Actions} to build the application, publish Docker images, and trigger AWS Auto Scaling Instance Refresh for rolling deployments.
+
+\end{itemize}
+
+% ──────────────────────────────────────────────
+\section*{Technical Skills}
+
+\textbf{Languages:} Java, SQL, JavaScript, TypeScript, Python \\
+\textbf{Backend:} Spring Boot, Spring Security, Spring Data JPA, REST APIs, Microservices, JWT Authentication \\
+\textbf{Databases:} PostgreSQL, MySQL, Redis \\
+\textbf{Cloud \& DevOps:} AWS (EC2, RDS, S3, Secrets Manager, Auto Scaling), Docker, GitLab CI/CD, GitHub Actions \\
+\textbf{Tools:} Git, Maven, Swagger/OpenAPI, SonarQube, JUnit 5, Mockito \\
+\textbf{Frontend:} React.js, Redux, Material UI \\
+\textbf{Concepts:} Object-Oriented Programming (OOP), Data Structures \& Algorithms, Concurrency Control, System Design, Design Patterns
+
+% ──────────────────────────────────────────────
+\section*{Education}
+\textbf{B.Tech in Information Technology} \hfill 2019 -- 2023 \\
+Anil Neerukonda Institute of Technology \& Sciences \hfill CGPA: \textbf{8.32 / 10}
+
+% ──────────────────────────────────────────────
+\section*{Achievements}
+\begin{itemize}
+    \item Solved \textbf{500+ Data Structures \& Algorithms problems} across multiple coding platforms, including \textbf{285+ problems on LeetCode}.
+    \item Earned \textbf{NPTEL (Java, DBMS)}, \textbf{HackerRank (Java, SQL)}, and \textbf{Microsoft Azure AI-900} certifications.
+\end{itemize}
+
+\end{document}

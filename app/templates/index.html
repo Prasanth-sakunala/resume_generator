@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Resume Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    textarea { width: 100%; height: 200px; }
+    button { padding: 12px; width: 100%; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<h2>Generate Resume</h2>
+
+<form action="/generate" method="post">
+  <textarea name="jd" placeholder="Paste Job Description here..." required></textarea>
+  <button type="submit">Generate Resume</button>
+</form>
+
+</body>
+</html>
