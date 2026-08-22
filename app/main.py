@@ -19,21 +19,21 @@ BASE_RESUME_PATH = "resume.tex"
 MAX_JD_LENGTH = 15000  # prevent abuse / token blowup
 
 
-def extract_keywords_grok(jd):
-    """Extract structured keywords from JD using Groq with multi-key retry."""
+def extract_keywords_groq(jd):
+    """Extract structured keywords from a JD using Groq with multi-key retry."""
     groq_keys = [
-        os.getenv("GROK_API_KEY_1"),
-        os.getenv("GROK_API_KEY_2"),
-        os.getenv("GROK_API_KEY_3"),
+        os.getenv("GROQ_API_KEY_1"),
+        os.getenv("GROQ_API_KEY_2"),
+        os.getenv("GROQ_API_KEY_3"),
     ]
     groq_keys = [key.strip() for key in groq_keys if key and key.strip()]
     if not groq_keys:
-        primary = os.getenv("GROK_API_KEY")
+        primary = os.getenv("GROQ_API_KEY")
         if primary and primary.strip():
             groq_keys = [primary.strip()]
 
     if not groq_keys:
-        print("[WARN] No Groq API keys found (GROK_API_KEY_1/2/3 or GROK_API_KEY). Skipping extraction.")
+        print("[WARN] No Groq API keys found (GROQ_API_KEY_1/2/3 or GROQ_API_KEY). Skipping extraction.")
         return None
 
     extraction_prompt = f"""Analyze this job description and extract structured data. Return ONLY valid JSON, no markdown wrapping.
@@ -55,7 +55,12 @@ def extract_keywords_grok(jd):
 JOB DESCRIPTION:
 {jd}"""
 
-    models = [os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")]
+    configured_models = os.getenv("GROQ_MODELS", "").strip()
+    models = (
+        [model.strip() for model in configured_models.split(",") if model.strip()]
+        if configured_models
+        else ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]
+    )
     last_error = None
 
     for key_index, api_key in enumerate(groq_keys):
@@ -83,7 +88,7 @@ JOB DESCRIPTION:
 
                     # Rate limit / quota hit — switch key
                     if response.status_code == 429:
-                        print(f"[WARN] Grok key #{key_index+1} rate limited. Switching key...")
+                        print(f"[WARN] Groq key #{key_index+1} rate limited. Switching key...")
                         last_error = "429 rate limit"
                         break
 
@@ -96,16 +101,16 @@ JOB DESCRIPTION:
 
                 except requests.exceptions.Timeout:
                     last_error = "timeout"
-                    print(f"[WARN] Grok key #{key_index+1} model:{model} attempt:{attempt+1} timed out")
+                    print(f"[WARN] Groq key #{key_index+1} model:{model} attempt:{attempt+1} timed out")
                     continue
 
                 except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
                     last_error = e
                     msg = str(e).lower()
-                    print(f"[ERROR] Grok key #{key_index+1} model:{model} attempt:{attempt+1}: {e}")
+                    print(f"[ERROR] Groq key #{key_index+1} model:{model} attempt:{attempt+1}: {e}")
 
                     if "429" in msg or "quota" in msg or "rate" in msg:
-                        print(f"[WARN] Grok quota hit on key #{key_index+1}. Switching key...")
+                        print(f"[WARN] Groq quota hit on key #{key_index+1}. Switching key...")
                         break
 
                     if "503" in msg or "502" in msg or "unavailable" in msg:
@@ -116,12 +121,12 @@ JOB DESCRIPTION:
 
                 except (json.JSONDecodeError, KeyError) as e:
                     last_error = e
-                    print(f"[WARN] Grok key #{key_index+1} model:{model} returned invalid JSON: {e}")
+                    print(f"[WARN] Groq key #{key_index+1} model:{model} returned invalid JSON: {e}")
                     break  # try next model
 
                 except Exception as e:
                     last_error = e
-                    print(f"[ERROR] Grok unexpected error: {e}")
+                    print(f"[ERROR] Groq unexpected error: {e}")
                     break
 
             # If rate limited, break out of model loop to try next key
@@ -130,7 +135,7 @@ JOB DESCRIPTION:
 
         time.sleep(0.5)  # brief pause between keys
 
-    print(f"[WARN] All Grok keys/models failed. Last error: {last_error}")
+    print(f"[WARN] All Groq keys/models failed. Last error: {last_error}")
     return None
 
 
@@ -246,9 +251,9 @@ Return ONLY the complete, valid LaTeX code. No explanations or markdown wrapping
 
 def generate_resume_text(prompt):
     models = [
-        "gemini-3.6-flash",        # primary (best)
-        "gemini-3.1-flash",        # fallback
-        "gemini-2.5-flash"         # last fallback
+        "gemini-3.7-flash",        # primary: strongest current Flash model
+        "gemini-3.6-flash",        # fallback
+        "gemini-2.5-flash"         # stable last fallback
     ]
     last_error = None
 
@@ -337,15 +342,15 @@ def generate(jd: str = Form(...), background_tasks: BackgroundTasks = None):
     with open(BASE_RESUME_PATH, "r", encoding="utf-8") as f:
         latex_code = f.read()
 
-    # Step 1: Extract keywords from JD using Grok
+    # Step 1: Extract keywords from JD using Groq
     job_store[job_id] = {"stage": "extracting", "progress": 20}
-    print("[INFO] Extracting keywords from JD via Grok...")
-    jd_keywords = extract_keywords_grok(jd)
+    print("[INFO] Extracting keywords from JD via Groq...")
+    jd_keywords = extract_keywords_groq(jd)
     if jd_keywords:
         print(f"[INFO] Extracted job title: {jd_keywords.get('job_title')}")
         print(f"[INFO] Must-have skills: {jd_keywords.get('tech_stack', {}).get('must_have', [])}")
     else:
-        print("[WARN] Grok extraction failed, Gemini will handle full analysis")
+        print("[WARN] Groq extraction failed, Gemini will handle full analysis")
 
     # Step 2: Build tailoring prompt with extracted keywords
     job_store[job_id] = {"stage": "tailoring", "progress": 40}
@@ -433,11 +438,11 @@ def run_job(job_id: str, background_tasks: BackgroundTasks = None):
 
     # Stage 1: Extract keywords
     job_store[job_id] = {"stage": "extracting", "progress": 20}
-    jd_keywords = extract_keywords_grok(jd)
+    jd_keywords = extract_keywords_groq(jd)
     if jd_keywords:
         print(f"[INFO] Extracted job title: {jd_keywords.get('job_title')}")
     else:
-        print("[WARN] Grok extraction failed")
+        print("[WARN] Groq extraction failed")
 
     # Stage 2: Building prompt
     job_store[job_id] = {"stage": "tailoring", "progress": 40}
