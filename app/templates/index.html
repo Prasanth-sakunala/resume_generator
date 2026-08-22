@@ -1,177 +1,68 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Resume Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .container {
-      background: white;
-      padding: 25px;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-      text-align: center;
-    }
-
-    h2 {
-      margin-bottom: 5px;
-      color: #2a5298;
-    }
-
-    .subtitle {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 15px;
-    }
-
-    textarea {
-      width: 100%;
-      height: 180px;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 14px;
-      resize: none;
-      outline: none;
-    }
-
-    textarea:focus {
-      border-color: #2a5298;
-      box-shadow: 0 0 5px rgba(42,82,152,0.4);
-    }
-
-    button {
-      padding: 12px;
-      width: 100%;
-      margin-top: 15px;
-      border: none;
-      border-radius: 8px;
-      background: #2a5298;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      transition: 0.3s;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-    }
-
-    button:hover {
-      background: #1e3c72;
-    }
-
-    button:disabled {
-      background: #999;
-      cursor: not-allowed;
-    }
-
-    /* 🔄 Spinner */
-    .spinner {
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid white;
-      border-radius: 50%;
-      width: 18px;
-      height: 18px;
-      animation: spin 1s linear infinite;
-      display: none;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .footer {
-      margin-top: 10px;
-      font-size: 12px;
-      color: #888;
-    }
-  </style>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
-
 <body>
 
 <div class="container">
-  <h2>Welcome Prasanth 👋</h2>
-  <div class="subtitle">Generate your tailored resume instantly</div>
+  <div class="header">
+    <h1>Hey Prasanth 👋</h1>
+    <div class="subtitle">Paste a job description, get a tailored resume in seconds</div>
+  </div>
 
   <form id="resumeForm">
-    <textarea name="jd" id="jd" placeholder="Paste Job Description here..." required></textarea>
-
-    <button type="submit" id="generateBtn">
-      <div class="spinner" id="spinner"></div>
-      <span id="btnText">🚀 Generate Resume</span>
-    </button>
+    <div class="form-section" id="formSection">
+      <textarea name="jd" id="jd" placeholder="Paste the full job description here..." required></textarea>
+      <button type="submit" class="btn-generate" id="generateBtn">
+        <span id="btnText">Generate Resume</span>
+      </button>
+    </div>
   </form>
 
-  <div class="footer">Fast • Simple • Personalized</div>
+  <!-- Progress Panel -->
+  <div class="progress-panel" id="progressPanel">
+    <div class="progress-bar-wrapper">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <ul class="step-list" id="stepList">
+      <li class="step-item" id="step-extracting">
+        <div class="step-icon">1</div>
+        <span class="step-label">Analyzing job description</span>
+      </li>
+      <li class="step-item" id="step-tailoring">
+        <div class="step-icon">2</div>
+        <span class="step-label">Matching skills &amp; keywords</span>
+      </li>
+      <li class="step-item" id="step-generating">
+        <div class="step-icon">3</div>
+        <span class="step-label">Tailoring resume with AI</span>
+      </li>
+      <li class="step-item" id="step-compiling">
+        <div class="step-icon">4</div>
+        <span class="step-label">Compiling PDF document</span>
+      </li>
+      <li class="step-item" id="step-done">
+        <div class="step-icon">✓</div>
+        <span class="step-label">Complete</span>
+      </li>
+    </ul>
+    <div class="status-msg" id="statusMsg">Starting...</div>
+  </div>
+
+  <!-- Success Panel -->
+  <div class="success-panel" id="successPanel">
+    <div class="icon">🎉</div>
+    <p>Resume generated and downloaded!</p>
+    <button type="button" class="btn-reset" id="resetBtn">Generate Another</button>
+  </div>
+
+  <div class="footer">Fast • AI-Powered • Personalized</div>
 </div>
 
-<script>
-  const form = document.getElementById("resumeForm");
-  const button = document.getElementById("generateBtn");
-  const spinner = document.getElementById("spinner");
-  const text = document.getElementById("btnText");
-  const textarea = document.getElementById("jd");
-
-  form.addEventListener("submit", async function (e) {
-    e.preventDefault(); // ❗ stop default form submit
-
-    spinner.style.display = "inline-block";
-    text.innerText = "Generating...";
-    button.disabled = true;
-
-    try {
-      const response = await fetch("/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          jd: textarea.value
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate resume");
-      }
-
-      // convert response to blob (PDF)
-      const blob = await response.blob();
-
-      // create download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "tailored_resume.pdf";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-    } catch (err) {
-      alert("Error generating resume");
-      console.error(err);
-    }
-
-    // ✅ reset UI after completion
-    spinner.style.display = "none";
-    text.innerText = "🚀 Generate Resume";
-    button.disabled = false;
-  });
-</script>
-
+<script src="/static/app.js"></script>
 </body>
 </html>
