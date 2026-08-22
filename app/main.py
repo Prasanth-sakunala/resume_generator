@@ -4,9 +4,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import subprocess, os, json, requests, tempfile, shutil
 from google import genai
+from google.genai import types
 import time
 import asyncio
 import uuid
+import json
+from pathlib import Path
+import re
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -18,6 +22,54 @@ job_store = {}
 BASE_RESUME_PATH = "resume.tex"
 MAX_JD_LENGTH = 15000  # prevent abuse / token blowup
 
+SKILLS_BANK_PATH = "skills_bank.json"
+
+def load_skills_bank(path=SKILLS_BANK_PATH):
+    p = Path(path)
+    if not p.exists():
+        return {"skills_bank": []}
+    with open(p, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def normalize_terms(text):
+    return re.sub(r'[^a-z0-9]+', ' ', text.lower()).split()
+
+def match_skills_bank(jd_keywords, skills_bank, min_token_overlap=2, include_unconfirmed=False):
+    """
+    Return a list of skills_bank entries that plausibly match JD keywords or domain terms.
+    Conservative match: intersects tags or normalized skill name tokens with jd hard_skills/domain_terms/action_verbs.
+    """
+    if not jd_keywords:
+        return []
+
+    pool = []
+    jd_terms = set()
+    jd_phrases = []
+    for k in ("hard_skills", "domain_terms", "action_verbs", "priorities"):
+        for t in jd_keywords.get(k, []):
+            jd_phrases.append(t)
+            jd_terms.update(normalize_terms(t))
+    # also include tech_stack must_have/nice_to_have
+    tech = jd_keywords.get("tech_stack", {})
+    for t in tech.get("must_have", []) + tech.get("nice_to_have", []):
+        jd_phrases.append(t)
+        jd_terms.update(normalize_terms(t))
+
+    normalized_jd = " ".join(normalize_terms(" ".join(jd_phrases)))
+    for entry in skills_bank.get("skills_bank", []):
+        evidence = entry.get("evidence", "").lower()
+        if not include_unconfirmed and "confirmation is needed" in evidence:
+            continue
+        tags = set()
+        for tag in entry.get("tags", []):
+            tags.update(normalize_terms(tag))
+        skill_tokens = set(normalize_terms(entry.get("skill", "")))
+        overlap = jd_terms & (tags | skill_tokens)
+        skill_phrase = " ".join(normalize_terms(entry.get("skill", "")))
+        exact_skill_match = bool(skill_phrase) and skill_phrase in normalized_jd
+        if exact_skill_match or len(overlap) >= min_token_overlap:
+            pool.append(entry)
+    return pool
 
 def extract_keywords_groq(jd):
     """Extract structured keywords from a JD using Groq with multi-key retry."""
@@ -139,7 +191,95 @@ JOB DESCRIPTION:
     return None
 
 
-def build_tailoring_prompt(latex_code, jd, jd_keywords):
+def audit_tailored_resume(original_tex, tailored_tex, matched_bank, jd=""):
+    """Check tailored claims against the original resume and authorized skills bank."""
+    groq_keys = [
+        os.getenv("GROQ_API_KEY_1"),
+        os.getenv("GROQ_API_KEY_2"),
+        os.getenv("GROQ_API_KEY_3"),
+    ]
+    groq_keys = [key.strip() for key in groq_keys if key and key.strip()]
+    if not groq_keys:
+        primary = os.getenv("GROQ_API_KEY")
+        if primary and primary.strip():
+            groq_keys = [primary.strip()]
+    if not groq_keys:
+        return {"unauthorized_additions": [], "jd_match_score": None, "error": "No Groq API key"}
+
+    audit_prompt = f"""Compare TAILORED resume against ORIGINAL resume, the JOB DESCRIPTION, and AUTHORIZED BANK.
+List any skill, tool, technology, achievement, or factual claim in TAILORED that does not trace to either source.
+Return ONLY valid JSON in this exact shape: {{"unauthorized_additions": ["short claim"], "jd_match_score": 0}}
+The score must be an integer from 0 to 100 based on truthful alignment with the job description.
+
+JOB DESCRIPTION:
+{jd}
+
+ORIGINAL RESUME:
+{original_tex}
+
+AUTHORIZED BANK:
+{json.dumps(matched_bank, ensure_ascii=True)}
+
+TAILORED RESUME:
+{tailored_tex}"""
+
+    configured_models = os.getenv("GROQ_MODELS", "").strip()
+    models = [model.strip() for model in configured_models.split(",") if model.strip()] if configured_models else ["openai/gpt-oss-120b"]
+    last_error = None
+    for key in groq_keys:
+        for model in models:
+            try:
+                response = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": "Audit resumes conservatively and return only valid JSON."},
+                            {"role": "user", "content": audit_prompt},
+                        ],
+                        "temperature": 0,
+                        "max_tokens": 500,
+                    },
+                    timeout=30,
+                )
+                response.raise_for_status()
+                content = response.json()["choices"][0]["message"]["content"]
+                content = content.replace("```json", "").replace("```", "").strip()
+                result = json.loads(content)
+                return {
+                    "unauthorized_additions": result.get("unauthorized_additions", []),
+                    "jd_match_score": result.get("jd_match_score"),
+                }
+            except (requests.exceptions.RequestException, json.JSONDecodeError, KeyError, TypeError) as error:
+                last_error = str(error)
+                continue
+    return {"unauthorized_additions": [], "jd_match_score": None, "error": last_error}
+
+
+def audit_and_correct_resume(original_tex, tailored_tex, prompt, matched_bank, jd=""):
+    audit = audit_tailored_resume(original_tex, tailored_tex, matched_bank, jd)
+    if audit.get("unauthorized_additions"):
+        correction_prompt = f"""Review your LaTeX resume against the source resume and authorized skills bank again.
+Remove or rewrite every unauthorized claim identified by the audit: {json.dumps(audit['unauthorized_additions'])}
+Return ONLY the complete valid LaTeX resume. Preserve all original factual constraints.
+
+SOURCE RESUME AND AUTHORIZED BANK RULES:
+{prompt}
+
+CURRENT DRAFT TO CORRECT:
+{tailored_tex}"""
+        try:
+            corrected_tex = generate_resume_text(correction_prompt)
+            corrected_tex = corrected_tex.replace("```latex", "").replace("```", "").strip()
+            corrected_audit = audit_tailored_resume(original_tex, corrected_tex, matched_bank, jd)
+            return corrected_tex, corrected_audit
+        except Exception as error:
+            audit["correction_error"] = str(error)
+    return tailored_tex, audit
+
+
+def build_tailoring_prompt(latex_code, jd, jd_keywords, matched_skills=None):
     """Build the resume tailoring prompt with extracted keywords."""
     if jd_keywords:
         keyword_section = f"""## EXTRACTED JD ANALYSIS:
@@ -164,6 +304,22 @@ def build_tailoring_prompt(latex_code, jd, jd_keywords):
         priorities = "role priorities from JD"
         action_verbs = "action verbs from JD"
 
+    if matched_skills:
+        matched_lines = [
+            "## MATCHED, CANDIDATE-AUTHORIZED SKILLS BANK (only these may be surfaced):"
+        ]
+        for entry in matched_skills:
+            line = (
+                f"- {entry.get('skill', 'Unnamed skill')} | "
+                f"level: {entry.get('level', 'exposure')} | "
+                f"evidence: {entry.get('evidence', 'No evidence provided')} | "
+                f"tags: {', '.join(entry.get('tags', []))}"
+            )
+            matched_lines.append(line)
+        matched_text = "\n".join(matched_lines)
+    else:
+        matched_text = "## MATCHED, CANDIDATE-AUTHORIZED SKILLS BANK: NONE"
+
     prompt = f"""You are an expert resume strategist specializing in ATS optimization and recruiter psychology.
 Your task: adapt the resume below to align with the given job description using the pre-extracted keyword analysis.
 
@@ -171,6 +327,15 @@ Your task: adapt the resume below to align with the given job description using 
 
 ## CURRENT RESUME (LaTeX):
 {latex_code}
+
+{matched_text}
+
+### SKILLS BANK RULES
+- "verified" entries may be phrased as active practice: "used", "built", or "implemented".
+- "exposure" entries must use only exploratory phrasing: "familiarity with" or "exposure to"; never "hands-on", "experience in", or implied production use.
+- Never state a Kafka or event-streaming claim stronger than "familiarity with event-driven concepts" unless that entry is "verified".
+- Do NOT invent skills beyond the current resume and matched skills bank.
+- If a matched skill duplicates an existing resume line, prefer the resume wording.
 
 ## TAILORING STRATEGY (follow in order):
 
@@ -286,6 +451,7 @@ def generate_resume_text(prompt):
                     response = client_for_key.models.generate_content(
                         model=model,
                         contents=prompt,
+                        config=types.GenerateContentConfig(temperature=0.25),
                     )
                     return response.text
 
@@ -352,12 +518,16 @@ def generate(jd: str = Form(...), background_tasks: BackgroundTasks = None):
     else:
         print("[WARN] Groq extraction failed, Gemini will handle full analysis")
 
+    skills_bank = load_skills_bank()
+    matched_bank = match_skills_bank(jd_keywords, skills_bank)
+    job_store[job_id].update({"matched_skills": matched_bank})
+
     # Step 2: Build tailoring prompt with extracted keywords
-    job_store[job_id] = {"stage": "tailoring", "progress": 40}
-    prompt = build_tailoring_prompt(latex_code, jd, jd_keywords)
+    job_store[job_id].update({"stage": "tailoring", "progress": 40})
+    prompt = build_tailoring_prompt(latex_code, jd, jd_keywords, matched_skills=matched_bank)
 
     # Step 3: Generate tailored resume via Gemini
-    job_store[job_id] = {"stage": "generating", "progress": 60}
+    job_store[job_id].update({"stage": "generating", "progress": 60})
     try:
         response_text = generate_resume_text(prompt)
     except Exception as e:
@@ -366,9 +536,11 @@ def generate(jd: str = Form(...), background_tasks: BackgroundTasks = None):
 
     # Clean markdown wrapping from LLM response
     clean_tex = response_text.replace("```latex", "").replace("```", "").strip()
+    clean_tex, audit = audit_and_correct_resume(latex_code, clean_tex, prompt, matched_bank, jd)
+    job_store[job_id].update({"audit": audit})
 
     # Step 4: Compile PDF
-    job_store[job_id] = {"stage": "compiling", "progress": 80}
+    job_store[job_id].update({"stage": "compiling", "progress": 80})
 
     # Use temp directory for concurrent-safe compilation
     work_dir = tempfile.mkdtemp(prefix="resume_")
@@ -397,7 +569,7 @@ def generate(jd: str = Form(...), background_tasks: BackgroundTasks = None):
         return {"error": "PDF not created"}
 
     # Done
-    job_store[job_id] = {"stage": "done", "progress": 100}
+    job_store[job_id].update({"stage": "done", "progress": 100})
 
     # Clean up temp directory after response is sent
     background_tasks.add_task(shutil.rmtree, work_dir, ignore_errors=True)
@@ -405,9 +577,13 @@ def generate(jd: str = Form(...), background_tasks: BackgroundTasks = None):
 
     return FileResponse(
         pdf_path,
-        filename="tailored_resume.pdf",
+        filename="Prasanth_sakunala_resume.pdf",
         media_type="application/pdf",
-        headers={"X-Job-Id": job_id}
+        headers={
+            "X-Job-Id": job_id,
+            "X-JD-Match-Score": str(audit.get("jd_match_score", "")),
+            "X-Unauthorized-Count": str(len(audit.get("unauthorized_additions", []))),
+        }
     )
 
 
@@ -437,19 +613,23 @@ def run_job(job_id: str, background_tasks: BackgroundTasks = None):
         latex_code = f.read()
 
     # Stage 1: Extract keywords
-    job_store[job_id] = {"stage": "extracting", "progress": 20}
+    job_store[job_id].update({"stage": "extracting", "progress": 20})
     jd_keywords = extract_keywords_groq(jd)
     if jd_keywords:
         print(f"[INFO] Extracted job title: {jd_keywords.get('job_title')}")
     else:
         print("[WARN] Groq extraction failed")
 
+    skills_bank = load_skills_bank()
+    matched_bank = match_skills_bank(jd_keywords, skills_bank)
+    job_store[job_id].update({"matched_skills": matched_bank})
+
     # Stage 2: Building prompt
-    job_store[job_id] = {"stage": "tailoring", "progress": 40}
-    prompt = build_tailoring_prompt(latex_code, jd, jd_keywords)
+    job_store[job_id].update({"stage": "tailoring", "progress": 40})
+    prompt = build_tailoring_prompt(latex_code, jd, jd_keywords, matched_skills=matched_bank)
 
     # Stage 3: Generate via Gemini
-    job_store[job_id] = {"stage": "generating", "progress": 60}
+    job_store[job_id].update({"stage": "generating", "progress": 60})
     try:
         response_text = generate_resume_text(prompt)
     except Exception as e:
@@ -457,9 +637,11 @@ def run_job(job_id: str, background_tasks: BackgroundTasks = None):
         response_text = latex_code
 
     clean_tex = response_text.replace("```latex", "").replace("```", "").strip()
+    clean_tex, audit = audit_and_correct_resume(latex_code, clean_tex, prompt, matched_bank, jd)
+    job_store[job_id].update({"audit": audit})
 
     # Stage 4: Compile PDF
-    job_store[job_id] = {"stage": "compiling", "progress": 80}
+    job_store[job_id].update({"stage": "compiling", "progress": 80})
     work_dir = tempfile.mkdtemp(prefix="resume_")
     tex_path = os.path.join(work_dir, "output.tex")
     pdf_path = os.path.join(work_dir, "output.pdf")
@@ -473,17 +655,21 @@ def run_job(job_id: str, background_tasks: BackgroundTasks = None):
     )
 
     if result.returncode != 0:
-        job_store[job_id] = {"stage": "error", "progress": 0, "error": "LaTeX compilation failed"}
+        job_store[job_id].update({"stage": "error", "progress": 0, "error": "LaTeX compilation failed"})
         background_tasks.add_task(shutil.rmtree, work_dir, ignore_errors=True)
         return {"error": "PDF generation failed"}
 
     if not os.path.exists(pdf_path):
-        job_store[job_id] = {"stage": "error", "progress": 0, "error": "PDF not created"}
+        job_store[job_id].update({"stage": "error", "progress": 0, "error": "PDF not created"})
         background_tasks.add_task(shutil.rmtree, work_dir, ignore_errors=True)
         return {"error": "PDF not created"}
 
-    job_store[job_id] = {"stage": "done", "progress": 100, "pdf_path": pdf_path, "work_dir": work_dir}
-    return {"status": "done"}
+    job_store[job_id].update({"stage": "done", "progress": 100, "pdf_path": pdf_path, "work_dir": work_dir})
+    return {
+        "status": "done",
+        "jd_match_score": audit.get("jd_match_score"),
+        "unauthorized_count": len(audit.get("unauthorized_additions", [])),
+    }
 
 
 @app.get("/progress/{job_id}")
@@ -499,7 +685,18 @@ async def progress(job_id: str):
                 break
             if job.get("stage") != last_stage:
                 last_stage = job.get("stage")
-                yield f"data: {json.dumps({'stage': job['stage'], 'progress': job['progress']})}\n\n"
+                event = {
+                    "stage": job["stage"],
+                    "progress": job["progress"],
+                    "matched_skills": job.get("matched_skills", []),
+                }
+                if job.get("stage") == "done":
+                    audit = job.get("audit", {})
+                    event.update({
+                        "jd_match_score": audit.get("jd_match_score"),
+                        "unauthorized_count": len(audit.get("unauthorized_additions", [])),
+                    })
+                yield f"data: {json.dumps(event)}\n\n"
             if job.get("stage") in ("done", "error"):
                 break
             await asyncio.sleep(0.5)
@@ -527,6 +724,6 @@ def download(job_id: str, background_tasks: BackgroundTasks = None):
 
     return FileResponse(
         pdf_path,
-        filename="tailored_resume.pdf",
+        filename="Prasanth_sakunala_resume.pdf",
         media_type="application/pdf"
     )

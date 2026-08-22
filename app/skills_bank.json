@@ -1,0 +1,196 @@
+{
+  "skills_bank": [
+    {
+      "skill": "Java",
+      "evidence": "Built Java services and Spring Boot applications for order and inventory management, coupon management, URL shortening, and emissions data APIs.",
+      "tags": ["java", "backend", "jvm"],
+      "level": "verified"
+    },
+    {
+      "skill": "Spring Boot",
+      "evidence": "Implemented REST applications with Spring Boot in Order-Inventory-Management-System, Coupon-Management-System, url-shortner, Hotel-management, and EmissionsDashboard.",
+      "tags": ["spring-boot", "java", "rest-api"],
+      "level": "verified"
+    },
+    {
+      "skill": "REST API design",
+      "evidence": "Documented and implemented resource-oriented endpoints for authentication, products, orders, coupons, URL shortening, hotel bookings, emissions data, and chat workflows.",
+      "tags": ["rest", "api-design", "http"],
+      "level": "verified"
+    },
+    {
+      "skill": "Authentication and authorization",
+      "evidence": "Implemented JWT-based login, protected routes, role-based access, and admin-only operations in the order and hotel management applications.",
+      "tags": ["jwt", "spring-security", "rbac"],
+      "level": "verified"
+    },
+    {
+      "skill": "MySQL and relational persistence",
+      "evidence": "Used MySQL-backed persistence for the Order & Inventory Management System and described relational database configuration for the hotel and coupon applications.",
+      "tags": ["mysql", "sql", "persistence"],
+      "level": "verified"
+    },
+    {
+      "skill": "Redis caching and data structures",
+      "evidence": "Used Redis for product caching and short URL persistence, including Base62 identifier conversion and redirect lookup in the URL Shortener project.",
+      "tags": ["redis", "caching", "base62"],
+      "level": "verified"
+    },
+    {
+      "skill": "Order and inventory domain modeling",
+      "evidence": "Implemented product management, order creation, inventory reservation, order status changes, order history, validation, and centralized error handling in Order-Inventory-Management-System.",
+      "tags": ["ecommerce", "orders", "inventory", "transactions"],
+      "level": "verified"
+    },
+    {
+      "skill": "Pricing and coupon rules",
+      "evidence": "Implemented cart-wise, product-wise, and Buy X Get Y discount rules plus coupon CRUD, applicability calculation, and cart application endpoints in Coupon-Management-System.",
+      "tags": ["pricing", "coupons", "business-rules"],
+      "level": "verified"
+    },
+    {
+      "skill": "React",
+      "evidence": "Built React user interfaces for the BlueWave Hotel Management, SmartDoc Manager, and profile-facing application work.",
+      "tags": ["react", "javascript", "frontend"],
+      "level": "verified"
+    },
+    {
+      "skill": "React Native and Expo",
+      "evidence": "Built Shopping Zone with Expo and React Native screens for product browsing, cart management, checkout, payment, orders, and profiles.",
+      "tags": ["react-native", "expo", "mobile"],
+      "level": "verified"
+    },
+    {
+      "skill": "Redux state management",
+      "evidence": "Structured cart actions, reducers, slices, and store setup in the Shopping Zone mobile application.",
+      "tags": ["redux", "redux-toolkit", "state-management"],
+      "level": "verified"
+    },
+    {
+      "skill": "Responsive UI development",
+      "evidence": "Created responsive React interfaces for hotel booking and document workflows, with reusable components and dedicated CSS styling.",
+      "tags": ["ui", "css", "responsive-design"],
+      "level": "verified"
+    },
+    {
+      "skill": "Python",
+      "evidence": "Built Python services and automation projects including Resume Generator, n8n YouTube Workflow, and the AI Animated Story pipeline.",
+      "tags": ["python", "automation", "backend"],
+      "level": "verified"
+    },
+    {
+      "skill": "FastAPI",
+      "evidence": "Built FastAPI services for AI-assisted resume generation and the n8n YouTube media pipeline, including health checks and generation endpoints.",
+      "tags": ["fastapi", "python", "uvicorn"],
+      "level": "verified"
+    },
+    {
+      "skill": "Docker and Docker Compose",
+      "evidence": "Added Dockerfiles and Compose-based multi-service setups for order management, resume generation, job discovery, story generation, and YouTube media workflows.",
+      "tags": ["docker", "docker-compose", "containers"],
+      "level": "verified"
+    },
+    {
+      "skill": "n8n workflow automation",
+      "evidence": "Designed workflow-driven systems for job discovery, normalization, AI scoring, notifications, animated stories, and YouTube Shorts production using n8n.",
+      "tags": ["n8n", "workflow-automation", "orchestration"],
+      "level": "verified"
+    },
+    {
+      "skill": "LLM integration",
+      "evidence": "Integrated Gemini, Groq, and Ollama for job relevance scoring, resume tailoring, story scripting, SEO metadata, and hashtag generation across multiple repositories.",
+      "tags": ["gemini", "groq", "ollama", "llm"],
+      "level": "verified"
+    },
+    {
+      "skill": "AI-assisted content generation",
+      "evidence": "Built pipelines that generate job matches, tailored resumes, story scripts, scene plans, thumbnails, and video metadata using external AI providers.",
+      "tags": ["ai", "content-generation", "prompting"],
+      "level": "verified"
+    },
+    {
+      "skill": "Media processing with FFmpeg",
+      "evidence": "Used FFmpeg-based assembly to combine generated images, animation clips, narration, music, subtitles, and transitions into final videos.",
+      "tags": ["ffmpeg", "video-processing", "media-pipeline"],
+      "level": "verified"
+    },
+    {
+      "skill": "Text-to-speech systems",
+      "evidence": "Integrated Edge TTS, Kokoro TTS, and gTTS services with voice assignment, audio generation, analysis, mixing, and fallback behavior.",
+      "tags": ["tts", "audio", "kokoro"],
+      "level": "verified"
+    },
+    {
+      "skill": "Remotion and Three.js rendering",
+      "evidence": "Built React and Remotion rendering components for animated scenes, camera motion, characters, environments, particles, post-processing, and 3D elements.",
+      "tags": ["remotion", "threejs", "react"],
+      "level": "verified"
+    },
+    {
+      "skill": "YouTube API and OAuth",
+      "evidence": "Implemented YouTube authentication, metadata generation, upload, playlist management, and upload history in the animation workflow repositories.",
+      "tags": ["youtube-api", "oauth2", "publishing"],
+      "level": "verified"
+    },
+    {
+      "skill": "AWS S3 integration",
+      "evidence": "Integrated AWS S3 image storage for hotel room media in BlueWave Hotel Management.",
+      "tags": ["aws", "s3", "cloud-storage"],
+      "level": "verified"
+    },
+    {
+      "skill": "LaTeX and PDF generation",
+      "evidence": "Built Resume Generator to modify a LaTeX resume from a job description, compile it with pdflatex, and return a tailored PDF.",
+      "tags": ["latex", "pdf", "document-generation"],
+      "level": "verified"
+    },
+    {
+      "skill": "Document import and export",
+      "evidence": "Implemented SmartDoc Manager features for drag-and-drop files, review flows, PDF export, Excel import/export, QR codes, signatures, and speech recognition.",
+      "tags": ["documents", "excel", "pdf", "file-upload"],
+      "level": "verified"
+    },
+    {
+      "skill": "API documentation and developer experience",
+      "evidence": "Documented endpoint catalogs, request examples, project structures, Docker setup, environment variables, troubleshooting, and Swagger UI access across the backend projects.",
+      "tags": ["documentation", "swagger", "developer-experience"],
+      "level": "verified"
+    },
+    {
+      "skill": "Azure AI (AI-900)",
+      "evidence": "Azure AI-900 certification, based on the certification listed on the resume provided by the user.",
+      "tags": ["azure", "ai", "certification"],
+      "level": "verified"
+    },
+    {
+      "skill": "AI-assisted coding",
+      "evidence": "Used GitHub Copilot or other AI code suggestions in the current client project to support implementation and accelerate day-to-day development, based on the user's confirmation.",
+      "tags": ["copilot", "ai-assist", "code-suggestions"],
+      "level": "verified"
+    },
+    {
+      "skill": "AI-assisted testing and test scaffolding",
+      "evidence": "AI-assisted unit-test scaffolding or CI test templates were proposed, but no concrete repository, commit, pull request, or other public GitHub evidence was identified; confirmation is needed.",
+      "tags": ["testing", "ci", "ai"],
+      "level": "exposure"
+    },
+    {
+      "skill": "AI output validation and secure handling",
+      "evidence": "Validation and secure handling of AI-generated outputs may be part of the development workflow, but no concrete repository evidence was identified; confirmation is needed.",
+      "tags": ["ai-safety", "validation", "traceability"],
+      "level": "exposure"
+    },
+    {
+      "skill": "Event-driven architecture",
+      "evidence": "Listed event-driven architectures and Kafka/RabbitMQ as current learning goals on the GitHub profile; no repository currently demonstrates a completed Kafka or RabbitMQ implementation.",
+      "tags": ["events", "kafka", "rabbitmq", "architecture"],
+      "level": "exposure"
+    },
+    {
+      "skill": "System design and distributed systems",
+      "evidence": "Listed system design, distributed systems, production-grade backend patterns, performance, and scaling as active learning areas on the profile.",
+      "tags": ["system-design", "distributed-systems", "scalability"],
+      "level": "exposure"
+    }
+  ]
+}
